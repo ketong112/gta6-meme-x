@@ -11,7 +11,7 @@
 // Outside the grader's container, MAKEFUN_BOT_DIR and MAKEFUN_OUTPUT_DIR stand in for /bot and /output:
 //   mkdir -p out && MAKEFUN_BOT_DIR=. MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BOT_DIR = process.env.MAKEFUN_BOT_DIR ?? '/bot';
@@ -24,3 +24,13 @@ try {
   console.error(`POST.json could not be copied from ${BOT_DIR}: ${(err as Error).message}`);
   process.exit(1);
 }
+
+// Verify the copy: it must be valid JSON naming an X post URL, otherwise the
+// gate refuses the entry and we would rather fail loudly here than silently.
+const copied = readFileSync(join(OUTPUT_DIR, 'POST.json'), 'utf8');
+const parsed = JSON.parse(copied) as { url?: unknown };
+if (typeof parsed.url !== 'string' || !/^https:\/\/(x\.com|twitter\.com)\/\w+\/status\/\d+$/.test(parsed.url)) {
+  console.error(`POST.json does not name an X post URL: ${copied.trim()}`);
+  process.exit(1);
+}
+console.log(`POST.json verified: ${parsed.url}`);
